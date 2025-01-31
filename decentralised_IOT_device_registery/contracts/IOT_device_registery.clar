@@ -231,3 +231,69 @@
        )
    )
 )
+
+
+;; Access Management
+(define-public (request-stream-access
+    (stream-id (string-utf8 36))
+    (duration uint)
+)
+    (let
+        ((caller tx-sender)
+         (stream (unwrap! (get-stream-info stream-id) ERR-STREAM-NOT-FOUND))
+         (device (unwrap! (get-device-info (get device-id stream)) ERR-DEVICE-NOT-FOUND))
+         (fees (calculate-access-fee (get price-per-access stream) duration)))
+        
+        ;; Validate access request
+        (asserts! (get active stream) ERR-STREAM-NOT-FOUND)
+        (asserts! (not (get requires-verification stream)) ERR-ACCESS-DENIED)
+        
+        ;; Process payment
+        (try! (stx-transfer? (get total-fee fees) caller (get owner device)))
+        (try! (stx-transfer? (get platform-fee fees) caller (var-get contract-owner)))
+        
+        ;; Grant access
+        (map-set AccessGrants
+            { user: caller, stream-id: stream-id }
+            {
+                granted-by: (get owner device),
+                grant-date: block-height,
+                expiry-date: (+ block-height duration),
+                access-type: u"read",
+                payment-status: true,
+                last-access: block-height
+            }
+        )
+        
+        ;; Update subscription record
+        (match (map-get? StreamSubscriptions { subscriber: caller })
+            prev-sub (begin
+                (map-set StreamSubscriptions
+                    { subscriber: caller }
+                    {
+                        subscribed-streams: (unwrap! (as-max-len? 
+                            (append (get subscribed-streams prev-sub) stream-id)
+                            u100
+                        ) ERR-NOT-AUTHORIZED),
+                        total-spent: (+ (get total-spent prev-sub) (get total-fee fees)),
+                        last-payment: block-height,
+                        active-subscriptions: (+ (get active-subscriptions prev-sub) u1)
+                    }
+                )
+                (ok true)
+            )
+            (begin
+                (map-set StreamSubscriptions
+                    { subscriber: caller }
+                    {
+                        subscribed-streams: (list stream-id),
+                        total-spent: (get total-fee fees),
+                        last-payment: block-height,
+                        active-subscriptions: u1
+                    }
+                )
+                (ok true)
+            )
+        )
+    )
+)
