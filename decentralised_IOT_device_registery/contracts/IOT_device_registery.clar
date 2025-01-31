@@ -115,3 +115,67 @@
         }
     )
 )
+
+
+;; Device Registration and Management
+(define-public (register-device
+    (device-id (string-utf8 36))
+    (name (string-utf8 100))
+    (device-type (string-utf8 50))
+    (manufacturer (string-utf8 100))
+    (firmware-version (string-utf8 20))
+    (location (optional (string-utf8 100)))
+)
+    (let
+        ((caller tx-sender))
+        
+        ;; Check for existing device
+        (asserts! (is-none (get-device-info device-id)) ERR-ALREADY-REGISTERED)
+        
+        ;; Create device record
+        (map-set Devices
+            { device-id: device-id }
+            {
+                owner: caller,
+                name: name,
+                device-type: device-type,
+                manufacturer: manufacturer,
+                firmware-version: firmware-version,
+                registration-date: block-height,
+                last-active: block-height,
+                status: u"active",
+                location: location,
+                verified: false
+            }
+        )
+        
+        ;; Update owner's device list
+        (match (get-owner-info caller)
+            prev-owner (begin
+                (map-set DeviceOwners
+                    { owner: caller }
+                    (merge prev-owner {
+                        devices: (unwrap! (as-max-len? 
+                            (append (get devices prev-owner) device-id)
+                            u100
+                        ) ERR-NOT-AUTHORIZED)
+                    })
+                )
+                (ok true)
+            )
+            (begin
+                (map-set DeviceOwners
+                    { owner: caller }
+                    {
+                        devices: (list device-id),
+                        total-streams: u0,
+                        reputation-score: u70,
+                        registration-date: block-height,
+                        verified: false
+                    }
+                )
+                (ok true)
+            )
+        )
+    )
+)
