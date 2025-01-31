@@ -179,3 +179,55 @@
         )
     )
 )
+
+
+(define-public (register-data-stream
+   (stream-id (string-utf8 36))
+   (device-id (string-utf8 36))
+   (stream-type (string-utf8 50))
+   (description (string-utf8 200))
+   (data-format (string-utf8 50))
+   (update-frequency uint)
+   (price-per-access uint)
+   (requires-verification bool)
+)
+   (let
+       ((caller tx-sender)
+        (device (unwrap! (get-device-info device-id) ERR-DEVICE-NOT-FOUND))
+        (owner-info (get-owner-info caller)))
+       
+       ;; Validate ownership and pricing
+       (asserts! (is-eq caller (get owner device)) ERR-NOT-AUTHORIZED)
+       (asserts! (>= price-per-access (var-get min-access-price)) ERR-INVALID-PRICE)
+       (asserts! (is-some owner-info) ERR-NOT-AUTHORIZED)
+       
+       (let ((prev-owner (unwrap! owner-info ERR-NOT-AUTHORIZED)))
+           ;; Create stream record
+           (map-set DataStreams
+               { stream-id: stream-id }
+               {
+                   device-id: device-id,
+                   stream-type: stream-type,
+                   description: description,
+                   data-format: data-format,
+                   update-frequency: update-frequency,
+                   price-per-access: price-per-access,
+                   requires-verification: requires-verification,
+                   active: true,
+                   created-at: block-height,
+                   access-count: u0
+               }
+           )
+           
+           ;; Update owner's stream count
+           (map-set DeviceOwners
+               { owner: caller }
+               (merge prev-owner {
+                   total-streams: (+ (get total-streams prev-owner) u1)
+               })
+           )
+           
+           (ok true)
+       )
+   )
+)
