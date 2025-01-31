@@ -12,3 +12,70 @@
 (define-constant ERR-INVALID-SIGNATURE (err u8))
 (define-constant ERR-STREAM-EXISTS (err u9))
 (define-constant ERR-INVALID-PRICE (err u10))
+
+
+;; Data Maps
+(define-map Devices
+    { device-id: (string-utf8 36) }  ;; UUID format
+    {
+        owner: principal,
+        name: (string-utf8 100),
+        device-type: (string-utf8 50),
+        manufacturer: (string-utf8 100),
+        firmware-version: (string-utf8 20),
+        registration-date: uint,      ;; block height
+        last-active: uint,            ;; block height
+        status: (string-utf8 20),     ;; active, inactive, maintenance
+        location: (optional (string-utf8 100)),
+        verified: bool
+    }
+)
+
+(define-map DataStreams
+    { stream-id: (string-utf8 36) }   ;; UUID format
+    {
+        device-id: (string-utf8 36),
+        stream-type: (string-utf8 50),
+        description: (string-utf8 200),
+        data-format: (string-utf8 50),
+        update-frequency: uint,        ;; in blocks
+        price-per-access: uint,        ;; in microSTX
+        requires-verification: bool,
+        active: bool,
+        created-at: uint,              ;; block height
+        access-count: uint
+    }
+)
+
+(define-map AccessGrants
+    { user: principal, stream-id: (string-utf8 36) }
+    {
+        granted-by: principal,
+        grant-date: uint,              ;; block height
+        expiry-date: uint,             ;; block height
+        access-type: (string-utf8 20), ;; read, write, admin
+        payment-status: bool,
+        last-access: uint              ;; block height
+    }
+)
+
+(define-map DeviceOwners
+    { owner: principal }
+    {
+        devices: (list 100 (string-utf8 36)),
+        total-streams: uint,
+        reputation-score: uint,        ;; 0-100
+        registration-date: uint,       ;; block height
+        verified: bool
+    }
+)
+
+(define-map StreamSubscriptions
+    { subscriber: principal }
+    {
+        subscribed-streams: (list 100 (string-utf8 36)),
+        total-spent: uint,             ;; in microSTX
+        last-payment: uint,            ;; block height
+        active-subscriptions: uint
+    }
+)
