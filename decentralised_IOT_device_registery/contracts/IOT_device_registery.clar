@@ -79,3 +79,9 @@
         active-subscriptions: uint
     }
 )
+
+;; Data Variables
+(define-data-var contract-owner principal tx-sender)
+(define-data-var platform-fee-rate uint u25)      ;; 0.25%
+(define-data-var min-access-price uint u1000)     ;; in microSTX
+(define-data-var default-access-duration uint u144);; ~24 hours in blocks
