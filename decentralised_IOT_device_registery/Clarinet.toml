@@ -1,0 +1,22 @@
+[project]
+name = "decentralised_IOT_device_registery"
+authors = []
+description = ""
+telemetry = true
+requirements = []
+[contracts.IOT_device_registery]
+path = "contracts/IOT_device_registery.clar"
+depends_on = []
+
+[repl]
+costs_version = 2
+parser_version = 2
+
+[repl.analysis]
+passes = ["check_checker"]
+
+[repl.analysis.check_checker]
+strict = false
+trusted_sender = false
+trusted_caller = false
+callee_filter = false
