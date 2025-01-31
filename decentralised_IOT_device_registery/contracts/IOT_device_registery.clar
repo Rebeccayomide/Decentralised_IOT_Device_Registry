@@ -85,3 +85,33 @@
 (define-data-var platform-fee-rate uint u25)      ;; 0.25%
 (define-data-var min-access-price uint u1000)     ;; in microSTX
 (define-data-var default-access-duration uint u144);; ~24 hours in blocks
+
+
+;; Read-Only Functions
+(define-read-only (get-device-info (device-id (string-utf8 36)))
+    (map-get? Devices { device-id: device-id })
+)
+
+(define-read-only (get-stream-info (stream-id (string-utf8 36)))
+    (map-get? DataStreams { stream-id: stream-id })
+)
+
+(define-read-only (get-access-grant (user principal) (stream-id (string-utf8 36)))
+    (map-get? AccessGrants { user: user, stream-id: stream-id })
+)
+
+(define-read-only (get-owner-info (owner principal))
+    (map-get? DeviceOwners { owner: owner })
+)
+
+(define-read-only (calculate-access-fee (price-per-access uint) (duration uint))
+    (let
+        ((base-fee (* price-per-access (/ duration u144)))
+         (platform-fee (/ (* base-fee (var-get platform-fee-rate)) u10000)))
+        {
+            base-fee: base-fee,
+            platform-fee: platform-fee,
+            total-fee: (+ base-fee platform-fee)
+        }
+    )
+)
